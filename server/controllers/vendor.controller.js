@@ -7,12 +7,46 @@ const sendToken = require('../utils/SendToken.js');
 // Register a vendor and send a verification email
 exports.registerVendor = async (req, res) => {
     try {
-        const { name,VehicleNumber, email, number, password, category, address, referral_code_which_applied, is_referral_applied = false, member_id } = req.body;
+        console.log(req.body);
+        const {
+            name, VehicleNumber, email, number, password, category,
+            address, referral_code_which_applied, is_referral_applied = false, member_id
+        } = req.body;
+
         const files = req.files;
+        console.log(files);
 
         if (!name || !email || !number || !password || !category) {
             return res.status(400).json({ success: false, message: 'Please enter all fields' });
         }
+
+        // Validate phone number
+        if (!/^\d{10}$/.test(number)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide a valid 10-digit phone number',
+            });
+        }
+
+        // Parse and validate coordinates
+        let coordinatesArray;
+        try {
+            const coordinatesString = address.location.coordinates;
+            coordinatesArray = typeof coordinatesString === 'string'
+                ? JSON.parse(coordinatesString).map(coord => parseFloat(coord))
+                : coordinatesString;
+
+            if (!Array.isArray(coordinatesArray) || coordinatesArray.length !== 2) {
+                throw new Error('Invalid coordinates format.');
+            }
+        } catch (err) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid coordinates format. Expected [longitude, latitude].',
+            });
+        }
+
+        address.location.coordinates = coordinatesArray;
 
         // Check if the vendor already exists
         const existingVendor = await Vendor_Model.findOne({ $or: [{ email }, { number }] });
@@ -21,8 +55,9 @@ exports.registerVendor = async (req, res) => {
         }
 
         // Validate file uploads
-        const imageFileOne = files?.imageone?.[0];
-        const imageFileTwo = files?.imagetwo?.[0];
+        const imageFileOne = req.files.find(file => file.fieldname === 'imageone');
+        const imageFileTwo = req.files.find(file => file.fieldname === 'imagetwo');
+
         if (!imageFileOne || !imageFileTwo) {
             return res.status(400).json({ success: false, message: 'Please upload both images' });
         }
@@ -31,28 +66,11 @@ exports.registerVendor = async (req, res) => {
         const otpService = new OtpService();
         const { otp, expiryTime } = otpService.generateOtp();
 
-        // Upload documents to Cloudinary
+        // Upload images to Cloudinary
         const uploadImageOne = await UploadService.uploadFromBuffer(imageFileOne.buffer);
         const uploadImageTwo = await UploadService.uploadFromBuffer(imageFileTwo.buffer);
 
-        // Send verification email
-        // const emailService = new SendEmailService();
-        // const emailData = {
-        //     to: email,
-        //     subject: 'Verify your email',
-        //     text: `Your OTP is ${otp}`,
-        // };
-
-        // let isEmailSent = await emailService.sendEmail(emailData.to, emailData.subject, emailData.text);
-        // if (!isEmailSent) {
-        //     isEmailSent = await emailService.sendEmail(emailData.to, emailData.subject, emailData.text);
-        //     if (!isEmailSent) {
-        //         return res.status(500).json({ success: false, message: 'Failed to send verification email' });
-        //     }
-        // }
-
         const genreateOrder = crypto.randomBytes(16).toString('hex');
-
 
         // Save vendor to the database
         const vendor = new Vendor_Model({
@@ -60,6 +78,7 @@ exports.registerVendor = async (req, res) => {
             email,
             number,
             password,
+            VehicleNumber,
             category,
             address,
             Documents: {
@@ -85,6 +104,10 @@ exports.registerVendor = async (req, res) => {
         res.status(201).json({
             success: true,
             message: 'Vendor registered successfully',
+            data: vendor,
+            type: 'email',
+            email: vendor.email,
+            time: vendor?.otp_expire_time
         });
     } catch (error) {
         console.error('Error registering vendor:', error);
@@ -95,6 +118,7 @@ exports.registerVendor = async (req, res) => {
         });
     }
 };
+
 
 exports.verifyVendorEmail = async (req, res) => {
     try {
@@ -205,7 +229,7 @@ exports.loginVendor = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Please provide both email and password' });
         }
 
-        const vendor = await Vendor_Model.findOne({ email }).populate('category','Profile_id');
+        const vendor = await Vendor_Model.findOne({ email }).populate('category', 'Profile_id');
         if (!vendor) {
             return res.status(404).json({ success: false, message: 'Vendor not found' });
         }
@@ -224,7 +248,7 @@ exports.loginVendor = async (req, res) => {
 // Vendor logout (simple session-based logout example)
 exports.logoutVendor = async (req, res) => {
     try {
-    
+
         res.status(200).json({ success: true, message: 'Logout successful' });
     } catch (error) {
         console.error('Error logging out vendor:', error);
@@ -277,7 +301,7 @@ exports.changeVendorPassword = async (req, res) => {
         }
 
         // Hash the new password before saving it
-       
+
         vendor.password = newPassword;
         await vendor.save();
 
@@ -314,11 +338,11 @@ exports.deleteVendorAccount = async (req, res) => {
 
 exports.updateVendorDetails = async (req, res) => {
     try {
-        const { name, email, number, password, category, address, referral_code_which_applied, is_referral_applied, member_id,VehicleNumber } = req.body;
+        const { name, email, number, password, category, address, referral_code_which_applied, is_referral_applied, member_id, VehicleNumber } = req.body;
 
         // Find the vendor by email or number
         const vendor = await Vendor_Model.findOne({ $or: [{ email }, { number }] });
-        
+
         if (!vendor) {
             return res.status(404).json({ success: false, message: 'Vendor not found' });
         }

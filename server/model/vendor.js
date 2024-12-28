@@ -32,15 +32,15 @@ const vendorSchema = new mongoose.Schema({
     address: {
         area: {
             type: String,
-            // required: [true, 'Area is required']
+          
         },
         street_address: {
             type: String,
-            // required: [true, 'Street address is required']
+            
         },
         landmark: {
             type: String,
-            // required: [true, 'Landmark is required']
+          
         },
         location: {
             type: {
@@ -54,8 +54,7 @@ const vendorSchema = new mongoose.Schema({
         },
         pincode: {
             type: String,
-            // required: [true, 'Pincode is required'],
-            // match: [/^\d{6}$/, 'Please provide a valid 6-digit pincode']
+          
         }
     },
     workMode: {

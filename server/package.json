@@ -25,6 +25,7 @@
     "nodemailer": "^6.9.16",
     "redis": "^4.7.0",
     "sanitize-html": "^2.14.0",
+    "server": "file:",
     "streamifier": "^0.1.1"
   }
 }

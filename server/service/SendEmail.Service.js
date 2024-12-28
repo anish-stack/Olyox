@@ -7,16 +7,20 @@ class SendEmailService {
             auth: {
                 user: process.env.SMTP_EMAIL_ID,
                 pass: process.env.SMTP_EMAIL_PASSWORD
+            },
+            tls: {
+                rejectUnauthorized: false
             }
         });
     }
 
-    async sendEmail(to, subject, text) {
+    async sendEmail(emailData) {
+
         const mailOptions = {
             from: process.env.SMTP_EMAIL_ID,
-            to: to,
-            subject: subject,
-            html: text
+            to: emailData?.to,
+            subject: emailData?.subject,
+            html: emailData?.text
         };
 
         try {

@@ -19,18 +19,16 @@ const { registerVendor, verifyVendorEmail, resendOtp, loginVendor, logoutVendor,
 const { createCategory, getAllCategories, getCategoryById, updateCategory, deleteCategory } = require('../controllers/category.controller');
 const { createMembershipPlan, getAllMembershipPlans, getMembershipPlanById, updateMembershipPlan, deleteMembershipPlan } = require('../controllers/Member_ship.controller');
 
-router.post('/register_vendor', (req, res, next) => {
-    upload.fields([
-        { name: 'imageone', maxCount: 1 },
-        { name: 'imagetwo', maxCount: 1 }
-    ])(req, res, (err) => {
-        if (err) {
-            return res.status(400).json({ error: err.message });
-        }
-        next();
-    });
-}, registerVendor);
-
+router.post('/register_vendor', upload.any(), registerVendor);
+// upload.fields([
+//     { name: 'imageone', maxCount: 1 },
+//     { name: 'imagetwo', maxCount: 1 }
+// ])(req, res, (err) => {
+//     if (err) {
+//         return res.status(400).json({ error: err.message });
+//     }
+//     next();
+// });
 router.post('/verify_email', verifyVendorEmail);
 router.post('/resend_Otp', resendOtp);
 router.post('/login', loginVendor);
